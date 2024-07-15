@@ -3,6 +3,7 @@ import { LoginHistory } from "../../model/loginHistory/loginHistoryModel.js";
 import dotenv from "dotenv";
 import { createToken } from "../../helpers/jwt/indexJwt.js";
 import { hashPassword, passwordChecking } from "../../helpers/bycrypt/bcryptHelpers.js";
+import generator from "generate-password"
 dotenv.config({ path: './.env' });
 
 export const signup = async(req, res, next)=>{
@@ -78,8 +79,9 @@ export const login = async(req, res, next)=>{
         }
 
         // check if password is correct or not
-        const isPAsswordCorrect = passwordChecking(password, user.password)
-        // console.log(isPAsswordCorrect);
+        const isPAsswordCorrect = await passwordChecking(password, user.password)
+        
+    
         if(!isPAsswordCorrect){
             return res.status(500).json({
                 status: "failure",
@@ -115,4 +117,49 @@ export const login = async(req, res, next)=>{
 }
 
 
+export const forgotPassWord = async(req, res, next)=>{
+    try{
+        const {email} = req.body;
+        const loweredCaseEmail = email.toLowerCase()
+        // check if user exists or not
+        const user = await User.findOne({email : loweredCaseEmail})
+        if(!user) {
+            return res.status(404).json({
+                status : "faulire",
+                message : "User with this email does not exist"
+            })
+        }
+        // Generating a random password
 
+        const randomPassword = generator.generate({
+            length:12,
+            numbers:true,
+            uppercase:true,
+            lowercase:true,
+            symbols:true
+        })
+        
+        console.log(randomPassword);
+
+        // Hashing the random password
+        // const hashedPassword = await hashPassword(randomPassword, 12);
+
+
+        //stroing the hashed random generated password into the database
+        user.password = randomPassword
+        user.save()
+
+        res.status(200).json({
+            status:"success",
+            data:{
+                generatedPassword : randomPassword
+            }
+        })
+    }
+    catch(err){
+        res.status(500).json({
+            status: "failure",
+            message: err.message
+        })
+    }
+}
